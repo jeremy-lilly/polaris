@@ -15,22 +15,48 @@ If system modules change in E3SM, we try to stay in sync:
 - pnetcdf
 - mkl (or other linear algebra libs)
 
+When we update the `mache` version in Polaris, we also need to bump the
+Polaris version (typically either the major or the minor version) and then
+re-deploy shared spack environments on each supported machine.
+
 ### Spack
 
-Spack is for libraries used by MPAS and tools that need system MPI:
+Spack is used to build libraries used by E3SM components and tools that need
+system MPI:
 
 - ESMF
+- MOAB
 - SCORPIO
+- Metis
+- Parmetis
+- Trilinos
 - Albany
 - PETSc
 - Netlib LAPACK
+
+We build one spack environment for tools (e.g. ESMF and MOAB) and another for
+libraries.  This allows us to build the tools with one set of compilers and
+MPI libraries adn the libraries with another.  This is sometimes necessary,
+since ESMF, MOAB and/or their dependencies can't always be built or don't
+run correctly with all compiler and MPI combinations.  For example, we have
+experienced problems running ESMF built with intel compilers on Perlmutter.
+We are also not able to build ESMF or the Eigen dependency of MOAB using
+`nvidiagpu` compilers.
+
+When we update the versions of any of these packages in Polaris, we also need
+to bump the Polaris version (typically either the major or the minor version)
+and then re-deploy shared spack environments on each supported machine.
 
 ### Conda
 
 Conda (via conda-forge) is used for python packages and related dependencies
 that don’t need system MPI. Conda environments aren’t shared between
-developers because the polaris you’re developing is part of the conda
-environment.
+developers because the polaris python package you’re developing is part of the
+conda environment.
+
+When we update the constraints on conda dependencies, we also need to bump the
+Polaris alpha, beta or rc version.  We do not need to re-deploy spack
+environments on share machines because they remain unaffected.
 
 ## Mache
 
@@ -55,6 +81,7 @@ These config options are shared across packages including:
 - E3SM_Diags
 - zppy
 - polaris
+- compass
 - E3SM-Unified
 
 Polaris uses these config options to know how to make a job script, where to
@@ -100,14 +127,18 @@ by polaris.  Here, we will use `<fork>` as a stand-in for the fork of mache
 to use (e.g. `E3SM-Project/mache`) and `<branch>` as the stand-in for a branch on
 that fork (e.g. `main`).
 
-We also need to make sure there is a spack branch for the version of mache.
-This is a branch off of the develop branch on
+We also need to make sure there is a spack branch for the version of Polaris.
+The spack branch is a branch off of the develop branch on
 [E3SM’s spack repo](https://github.com/E3SM-Project/spack) that has any
-updates to packages required for this version of mache and polaris. The
-spack branch will omit any alpha, beta or rc suffix on the mache version
-because it is intended to be the spack branch we will use once the `mache`
-release happens.  In this example, we will work with the branch
+uupdates to packages required for this version of mache.  The remote branch
+is named after the release version of mache (omitting any alpha, beta or rc
+suffix because it is intended to be the spack branch we will use once the
+``mache`` release happens).  In this example, we will work with the branch
 [spack_for_mache_1.12.0](https://github.com/E3SM-Project/spack/tree/spack_for_mache_1.12.0).
+The local clone is instead named after the Polaris version (again any omitting
+alpha, beta or rc) plus the compiler and MPI library because we have discovered
+two users cannot make modifications to the same git clone.  Giving each clone
+of the spack branch a unique name ensures that they are independent.
 
 Here's how to get a branch of polaris we're testing (`simplify_local_mache`
 in this case) as a local worktree:
