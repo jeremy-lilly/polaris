@@ -111,12 +111,10 @@ class Forward(OceanModelStep):
         cell_count : int or None
             The approximate number of cells in the mesh
         """
-        # section = self.config['planar_barotropic_jet']
-        # lx = section.getfloat('lx')
-        # ly = section.getfloat('ly')
         earth_radius = 6.37122e6  # meters
         lx = 2 * np.pi * earth_radius / 1000  # km
         ly = lx / 2  # km
+
         nx, ny = compute_planar_hex_nx_ny(lx, ly, self.resolution)
         cell_count = nx * ny
         return cell_count
@@ -153,15 +151,7 @@ class Forward(OceanModelStep):
                 time.strftime('%H:%M:%S', time.gmtime(run_seconds))
             options['config_stop_time'] = 'none'
 
-        # btr_dt is also proportional to resolution: default 1.5 seconds per km
-        btr_dt_per_km = config.getfloat('planar_barotropic_jet',
-                                        'btr_dt_per_km')
-        btr_dt = btr_dt_per_km * self.resolution
-        options['config_btr_dt'] = \
-            time.strftime('%H:%M:%S', time.gmtime(btr_dt))
-
         self.dt = dt
-        self.btr_dt = btr_dt
 
         self.add_model_config_options(options=options,
                                       config_model='mpas-ocean')
