@@ -68,7 +68,7 @@ class Init(Step):
 
         ds_mesh = make_planar_hex_mesh(nx=nx, ny=ny, dc=dc,
                                        nonperiodic_x=False,
-                                       nonperiodic_y=False)
+                                       nonperiodic_y=True)
         write_netcdf(ds_mesh, 'base_mesh.nc')
 
         ds_mesh = cull(ds_mesh, logger=logger)

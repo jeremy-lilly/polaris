@@ -476,10 +476,10 @@ def edge_grad_norm(mesh):
     # print(jvec[jvec < 0])
     # print(xvec)
 
-    # bdry_idx = jvec < 0
-    # ivec = np.delete(ivec, bdry_idx)
-    # jvec = np.delete(jvec, bdry_idx)
-    # xvec = np.delete(xvec, bdry_idx)
+    bdry_idx = jvec < 0
+    ivec = np.delete(ivec, bdry_idx)
+    jvec = np.delete(jvec, bdry_idx)
+    xvec = np.delete(xvec, bdry_idx)
 
     return csr_matrix((xvec, (ivec, jvec)))
 

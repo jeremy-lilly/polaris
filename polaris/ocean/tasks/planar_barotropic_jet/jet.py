@@ -165,7 +165,7 @@ def init(name, save, rsph=6371220.0, pert=False):
     print("Computing flow thickness...")
 
     # using cos for agreement at periodic boundary in y
-    frot = 2.0 * erot * np.cos(ylat_edge)
+    frot = 2.0 * erot * np.sin(ylat_edge)
 
     vrhs = trsk.cell_flux_sums * (frot * uprp)
     vrhs = vrhs * -1.00 / grav
@@ -249,11 +249,11 @@ def init(name, save, rsph=6371220.0, pert=False):
 
     # using cos for agreement at periodic boundary in y
     init["fCell"] = (("nCells"),
-                     2.00E+00 * erot * np.cos(ylat_cell))
+                     2.00E+00 * erot * np.sin(ylat_cell))
     init["fEdge"] = (("nEdges"),
-                     2.00E+00 * erot * np.cos(ylat_edge))
+                     2.00E+00 * erot * np.sin(ylat_edge))
     init["fVertex"] = (("nVertices"),
-                       2.00E+00 * erot * np.cos(ylat_vert))
+                       2.00E+00 * erot * np.sin(ylat_vert))
 
     init.to_netcdf(save, format="NETCDF4")
 
