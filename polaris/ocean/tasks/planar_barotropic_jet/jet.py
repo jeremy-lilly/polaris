@@ -3,11 +3,12 @@ import argparse
 import numpy as np
 import xarray
 from scipy.integrate import quadrature
-from scipy.sparse.linalg import gcrotmk
 
 from polaris.ocean.tasks.planar_barotropic_jet.msh import load_mesh
 from polaris.ocean.tasks.planar_barotropic_jet.operators import trsk_mats
 from polaris.ocean.tasks.planar_barotropic_jet.stb import strtobool
+
+# from scipy.sparse.linalg import gcrotmk
 
 
 def ypos_to_ylat(y, ymin, ymax):
@@ -34,6 +35,10 @@ def ujet(lat, lat0, lat1, uamp):
     vals[lat > lat1] = 0.0
 
     return vals
+
+
+def h_balance(lat, lat0, lat1, uamp, f, g):
+    return -1 * (-1 / g) * f * ujet(lat, lat0, lat1, uamp)
 
 
 def init(name, save, rsph=6371220.0, pert=False):
@@ -164,27 +169,43 @@ def init(name, save, rsph=6371220.0, pert=False):
 
     print("Computing flow thickness...")
 
-    # using cos for agreement at periodic boundary in y
-    frot = 2.0 * erot * np.sin(ylat_edge)
+    frot = 2.0 * erot * np.sin(np.pi / 4)
+    # frot = 2.0 * erot * np.sin(ylat_edge)
 
-    vrhs = trsk.cell_flux_sums * (frot * uprp)
-    vrhs = vrhs * -1.00 / grav
+    # vrhs = trsk.cell_flux_sums * (frot * uprp)
+    # vrhs = vrhs * -1.00 / grav
 
-    vrhs = vrhs - np.mean(vrhs)  # INT rhs dA must be 0.0
-    vrhs = vrhs - np.mean(vrhs)
+    # vrhs = vrhs - np.mean(vrhs)  # INT rhs dA must be 0.0
+    # vrhs = vrhs - np.mean(vrhs)
 
     # ttic = time.time()
-    hdel, info = gcrotmk(trsk.cell_del2_sums, vrhs,
-                         rtol=1.E-8, atol=1.E-8, m=50, k=25)
+    # hdel, info = gcrotmk(trsk.cell_del2_sums, vrhs,
+    #                      rtol=1.E-8, atol=1.E-8, m=50, k=25)
     # ttoc = time.time()
 
-    if (info != +0):
-        raise Exception("Did not converge!")
+    # if (info != +0):
+    #     raise Exception("Did not converge!")
+
+    hdel = np.zeros(mesh.cell.size)
+    for cell in range(mesh.cell.size):
+        lat = ylat_cell[cell]
+        if (lat >= lat0 and lat < lat1):
+            hdel[cell], _ = quadrature(
+                h_balance, lat0, lat, miniter=8,
+                args=(lat0, lat1, uamp, frot, grav))
+
+    hdel[ylat_cell >= lat1] = np.min(hdel)
 
     herr = hbar - hdel
     # add offset for mean hh
     hdel = hdel + (np.sum(mesh.cell.area * herr) /
                    np.sum(mesh.cell.area * 1.00))
+
+    # test repairs for planar balance
+    # h_min_lat = ylat_cell[np.argmin(hdel)]
+    # h_max_lat = ylat_cell[np.argmax(hdel)]
+    # hdel[ylat_cell < h_max_lat] = np.max(hdel)
+    # hdel[ylat_cell > h_min_lat] = np.min(hdel)
 
 # -- optional: add perturbation to the thickness distribution
 
@@ -248,12 +269,21 @@ def init(name, save, rsph=6371220.0, pert=False):
     #     (trsk.dual_curl_sums * unrm) / mesh.vert.area)
 
     # using cos for agreement at periodic boundary in y
+    # init["fCell"] = (("nCells"),
+    #                  2.00E+00 * erot * np.sin(ylat_cell))
+    # init["fEdge"] = (("nEdges"),
+    #                  2.00E+00 * erot * np.sin(ylat_edge))
+    # init["fVertex"] = (("nVertices"),
+    #                    2.00E+00 * erot * np.sin(ylat_vert))
     init["fCell"] = (("nCells"),
-                     2.00E+00 * erot * np.sin(ylat_cell))
+                     2.00E+00 * erot *
+                     np.sin(np.pi / 4) * np.ones(mesh.cell.size))
     init["fEdge"] = (("nEdges"),
-                     2.00E+00 * erot * np.sin(ylat_edge))
+                     2.00E+00 * erot *
+                     np.sin(np.pi / 4) * np.ones(mesh.edge.size))
     init["fVertex"] = (("nVertices"),
-                       2.00E+00 * erot * np.sin(ylat_vert))
+                       2.00E+00 * erot *
+                       np.sin(np.pi / 4) * np.ones(mesh.vert.size))
 
     init.to_netcdf(save, format="NETCDF4")
 
