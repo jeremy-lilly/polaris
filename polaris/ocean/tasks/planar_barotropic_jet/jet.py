@@ -21,7 +21,7 @@ def xpos_to_xlon(x, xmin, xmax):
 
 def ujet(lat, lat0, lat1, uamp):
     """
-    Helper to integrate PSI from U = -1/R * d/d.lat(PSI) via
+    Helper to integrate PSI from U = 1/R * d/d.lat(PSI) via
     quadrature...
 
     U(lat) = A * exp(1/((lat-lat0) * (lat-lat1)))
@@ -34,12 +34,11 @@ def ujet(lat, lat0, lat1, uamp):
     vals[lat < lat0] = 0.0
     vals[lat > lat1] = 0.0
 
-    # mult by -1 to get flow direction correct
-    return -1 * vals
+    return vals
 
 
 def h_balance(lat, lat0, lat1, uamp, f, g):
-    return (-1 / g) * f * ujet(lat, lat0, lat1, uamp)
+    return (1 / g) * f * ujet(lat, lat0, lat1, uamp)
 
 
 def init(name, save, rsph=6371220.0, pert=False):
@@ -102,7 +101,7 @@ def init(name, save, rsph=6371220.0, pert=False):
     # y1 = (1 - shift_up) * ymin + shift_up * ymax  # top of jet
 
     umax = 80.0  # jet max speed m/s
-    umid = umax * (ymax - ymin) / np.pi  # scale(ish) to mesh
+    umid = umax * (ymax - ymin) / np.pi  # scale to mesh
     hbar = 10000.0  # mean layer thickness
 
     uamp = umid / np.exp(-4. / (lat1 - lat0) ** 2)
@@ -120,7 +119,7 @@ def init(name, save, rsph=6371220.0, pert=False):
                 ujet, lat0, lat, miniter=8,
                 args=(lat0, lat1, uamp))
 
-    vpsi[ylat_vert >= lat1] = np.min(vpsi)
+    vpsi[ylat_vert >= lat1] = np.max(vpsi)
 
     print("--> done: vert!")
 
@@ -132,7 +131,7 @@ def init(name, save, rsph=6371220.0, pert=False):
                 ujet, lat0, lat, miniter=8,
                 args=(lat0, lat1, uamp))
 
-    cpsi[ylat_cell >= lat1] = np.min(cpsi)
+    cpsi[ylat_cell >= lat1] = np.max(cpsi)
 
     print("--> done: cell!")
 
@@ -148,7 +147,11 @@ def init(name, save, rsph=6371220.0, pert=False):
 
     ylat_edge = ypos_to_ylat(mesh.edge.ypos, ymin, ymax)
 
-    unrm = trsk.edge_grad_perp * vpsi * -1.00
+    # in theory the factor of -1 should not
+    # be commented out, but leaving it in causes
+    # the flow to go in the opposite direction
+    # expected, not clear why
+    unrm = trsk.edge_grad_perp * vpsi  # * -1.00
     # repair at boundary
     unrm[ylat_edge > lat1] = 0
     unrm[ylat_edge < lat0] = 0
@@ -163,7 +166,7 @@ def init(name, save, rsph=6371220.0, pert=False):
     print("--> max(abs(unrm)):", np.max(unrm))
     print("--> sum(div(unrm)):", np.sum(udiv))
 
-# -- calculate  h = (-1/g) int fu dy
+# -- calculate  h = (1/g) int fu dy
 # -- obtained from assuming that du/dt = 0
 # -- and simplifying momentum eqn
 
