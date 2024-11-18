@@ -28,17 +28,18 @@ def ujet(lat, lat0, lat1, uamp):
 
     """
 
-    vals = -1 * uamp * np.exp(1.0E+0 / ((lat - lat0) *
-                                        (lat - lat1)))
+    vals = uamp * np.exp(1.0E+0 / ((lat - lat0) *
+                                   (lat - lat1)))
 
     vals[lat < lat0] = 0.0
     vals[lat > lat1] = 0.0
 
-    return vals
+    # mult by -1 to get flow direction correct
+    return -1 * vals
 
 
 def h_balance(lat, lat0, lat1, uamp, f, g):
-    return -1 * (-1 / g) * f * ujet(lat, lat0, lat1, uamp)
+    return (-1 / g) * f * ujet(lat, lat0, lat1, uamp)
 
 
 def init(name, save, rsph=6371220.0, pert=False):
@@ -89,8 +90,10 @@ def init(name, save, rsph=6371220.0, pert=False):
     ymin = np.min(mesh.vert.ypos)
     ymax = np.max(mesh.vert.ypos)
 
-    lat0 = np.pi / 7.0  # jet lat width
-    lat1 = np.pi / 2.0 - lat0
+    jet_lat_mid = 0
+    jet_width = np.pi / 7
+    lat0 = jet_lat_mid - jet_width
+    lat1 = jet_lat_mid + jet_width
     # jet_center = 0.7  # relative center of jet
     # jet_width = 0.3  # relative width of jet
     # shift_up = jet_center + jet_width / 2
@@ -106,10 +109,8 @@ def init(name, save, rsph=6371220.0, pert=False):
 
 # -- build a streamfunction at mesh vertices using quadrature
 
-    vpsi = np.zeros(
-        mesh.vert.size, dtype=np.float64)
-    cpsi = np.zeros(
-        mesh.cell.size, dtype=np.float64)
+    vpsi = np.zeros(mesh.vert.size, dtype=np.float64)
+    cpsi = np.zeros(mesh.cell.size, dtype=np.float64)
 
     ylat_vert = ypos_to_ylat(mesh.vert.ypos, ymin, ymax)
     for vert in range(mesh.vert.size):
@@ -120,7 +121,6 @@ def init(name, save, rsph=6371220.0, pert=False):
                 args=(lat0, lat1, uamp))
 
     vpsi[ylat_vert >= lat1] = np.min(vpsi)
-    # vpsi[ylat_vert[:] >= lat1] = np.max(vpsi)
 
     print("--> done: vert!")
 
@@ -133,7 +133,6 @@ def init(name, save, rsph=6371220.0, pert=False):
                 args=(lat0, lat1, uamp))
 
     cpsi[ylat_cell >= lat1] = np.min(cpsi)
-    # cpsi[ylat_cell[:] >= lat1] = np.max(cpsi)
 
     print("--> done: cell!")
 
@@ -164,27 +163,14 @@ def init(name, save, rsph=6371220.0, pert=False):
     print("--> max(abs(unrm)):", np.max(unrm))
     print("--> sum(div(unrm)):", np.sum(udiv))
 
-# -- solve -g * del^2 h = div f * u_perp for layer thickness,
-# -- leads to a h which is in discrete balance
+# -- calculate  h = (-1/g) int fu dy
+# -- obtained from assuming that du/dt = 0
+# -- and simplifying momentum eqn
 
     print("Computing flow thickness...")
 
     frot = 2.0 * erot * np.sin(np.pi / 4)
     # frot = 2.0 * erot * np.sin(ylat_edge)
-
-    # vrhs = trsk.cell_flux_sums * (frot * uprp)
-    # vrhs = vrhs * -1.00 / grav
-
-    # vrhs = vrhs - np.mean(vrhs)  # INT rhs dA must be 0.0
-    # vrhs = vrhs - np.mean(vrhs)
-
-    # ttic = time.time()
-    # hdel, info = gcrotmk(trsk.cell_del2_sums, vrhs,
-    #                      rtol=1.E-8, atol=1.E-8, m=50, k=25)
-    # ttoc = time.time()
-
-    # if (info != +0):
-    #     raise Exception("Did not converge!")
 
     hdel = np.zeros(mesh.cell.size)
     for cell in range(mesh.cell.size):
@@ -194,23 +180,18 @@ def init(name, save, rsph=6371220.0, pert=False):
                 h_balance, lat0, lat, miniter=8,
                 args=(lat0, lat1, uamp, frot, grav))
 
-    hdel[ylat_cell >= lat1] = np.min(hdel)
+    hdel[ylat_cell >= lat1] = np.max(hdel)
 
-    herr = hbar - hdel
-    # add offset for mean hh
-    hdel = hdel + (np.sum(mesh.cell.area * herr) /
-                   np.sum(mesh.cell.area * 1.00))
-
-    # test repairs for planar balance
-    # h_min_lat = ylat_cell[np.argmin(hdel)]
-    # h_max_lat = ylat_cell[np.argmax(hdel)]
-    # hdel[ylat_cell < h_max_lat] = np.max(hdel)
-    # hdel[ylat_cell > h_min_lat] = np.min(hdel)
+    # shift to get the desired mean h
+    herr = hbar + hdel
+    h0 = (np.sum(mesh.cell.area * herr) /
+          np.sum(mesh.cell.area * 1.00))
+    hdel = h0 - hdel
 
 # -- optional: add perturbation to the thickness distribution
 
     xlon_cell = xpos_to_xlon(mesh.cell.xpos, xmin, xmax)
-    lat2 = np.pi / 4.  # perturbation constants
+    lat2 = jet_lat_mid  # perturbation constants
     lon2 = np.pi / 1.
 
     hmul = 120.0
