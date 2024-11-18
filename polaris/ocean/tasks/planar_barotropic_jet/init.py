@@ -92,10 +92,11 @@ class Init(Step):
         ds['temperature'] = temperature_array.expand_dims(dim='Time', axis=0)
         ds['salinity'] = salinity * xr.ones_like(ds.temperature)
 
+        with_pert = section.getboolean('with_pert')
         print('~~~~Calculating ICs for btr jet...')
         jet_init(name='culled_mesh.nc',
                  save='jet_ic.nc',
-                 pert=True)
+                 pert=with_pert)
         jet_ds = xr.open_dataset('jet_ic.nc')
         print('~~~~Done')
 

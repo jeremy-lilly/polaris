@@ -93,12 +93,6 @@ def init(name, save, rsph=6371220.0, pert=False):
     jet_width = np.pi / 7
     lat0 = jet_lat_mid - jet_width
     lat1 = jet_lat_mid + jet_width
-    # jet_center = 0.7  # relative center of jet
-    # jet_width = 0.3  # relative width of jet
-    # shift_up = jet_center + jet_width / 2
-    # shift_down = jet_center - jet_width / 2
-    # y0 = (1 - shift_down) * ymin + shift_down * ymax  # bottom of jet
-    # y1 = (1 - shift_up) * ymin + shift_up * ymax  # top of jet
 
     umax = 80.0  # jet max speed m/s
     umid = umax * (ymax - ymin) / np.pi  # scale to mesh
@@ -219,25 +213,6 @@ def init(name, save, rsph=6371220.0, pert=False):
     ) / 3.00
 
     init = xarray.open_dataset(name)
-    # init.attrs.update({"sphere_radius": mesh.rsph})
-    # init.attrs.update({"config_gravity": grav})
-    # init["xCell"] = (("nCells"), mesh.cell.xpos)
-    # init["yCell"] = (("nCells"), mesh.cell.ypos)
-    # init["zCell"] = (("nCells"), mesh.cell.zpos)
-    # init["areaCell"] = (("nCells"), mesh.cell.area)
-
-    # init["xEdge"] = (("nEdges"), mesh.edge.xpos)
-    # init["yEdge"] = (("nEdges"), mesh.edge.ypos)
-    # init["zEdge"] = (("nEdges"), mesh.edge.zpos)
-    # init["dvEdge"] = (("nEdges"), mesh.edge.vlen)
-    # init["dcEdge"] = (("nEdges"), mesh.edge.clen)
-
-    # init["xVertex"] = (("nVertices"), mesh.vert.xpos)
-    # init["yVertex"] = (("nVertices"), mesh.vert.ypos)
-    # init["zVertex"] = (("nVertices"), mesh.vert.zpos)
-    # init["areaTriangle"] = (("nVertices"), mesh.vert.area)
-    # init["kiteAreasOnVertex"] = (
-    #     ("nVertices", "vertexDegree"), mesh.vert.kite)
 
     init["h"] = (
         ("Time", "nCells"),
@@ -248,26 +223,13 @@ def init(name, save, rsph=6371220.0, pert=False):
 
     init["streamfunction"] = (("nVertices"), vpsi)
     init["velocityTotals"] = (("nVertices"), vvel)
-    # init["vorticity"] = (
-    #     ("nVertices"),
-    #     (trsk.dual_curl_sums * unrm) / mesh.vert.area)
 
-    # using cos for agreement at periodic boundary in y
-    # init["fCell"] = (("nCells"),
-    #                  2.00E+00 * erot * np.sin(ylat_cell))
-    # init["fEdge"] = (("nEdges"),
-    #                  2.00E+00 * erot * np.sin(ylat_edge))
-    # init["fVertex"] = (("nVertices"),
-    #                    2.00E+00 * erot * np.sin(ylat_vert))
     init["fCell"] = (("nCells"),
-                     2.00E+00 * erot *
-                     np.sin(np.pi / 4) * np.ones(mesh.cell.size))
+                     frot * np.ones(mesh.cell.size))
     init["fEdge"] = (("nEdges"),
-                     2.00E+00 * erot *
-                     np.sin(np.pi / 4) * np.ones(mesh.edge.size))
+                     frot * np.ones(mesh.edge.size))
     init["fVertex"] = (("nVertices"),
-                       2.00E+00 * erot *
-                       np.sin(np.pi / 4) * np.ones(mesh.vert.size))
+                       frot * np.ones(mesh.vert.size))
 
     init.to_netcdf(save, format="NETCDF4")
 

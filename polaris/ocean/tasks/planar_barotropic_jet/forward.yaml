@@ -2,7 +2,7 @@ mpas-ocean:
   run_modes:
     config_ocean_run_mode: forward
   time_management:
-    config_run_duration: 0006_00:00:00
+    config_run_duration: 0007_00:00:00
   ALE_vertical_grid:
     config_vert_coord_movement: impermeable_interfaces
     config_ALE_thickness_proportionality: weights_only
